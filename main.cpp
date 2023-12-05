@@ -96,7 +96,7 @@ int calcPoints(vector<Trick> &tricksReference, vector<TrickCombination> &trickCo
 }
 
 vector<int> getPossibleTrickCombinations(vector<Section> &sections, vector<TrickCombination> &trickCombinations, int sectionIndex, vector<vector<int>> &sectionPossibleTricksCache) {
-    if (!sectionPossibleTricksCache[sectionIndex].size()) {
+    if (sectionPossibleTricksCache[sectionIndex][0] == -1) {
         vector<int> result;
 
         for (int i = 0; i < trickCombinations.size(); i++) {
@@ -109,54 +109,31 @@ vector<int> getPossibleTrickCombinations(vector<Section> &sections, vector<Trick
     return sectionPossibleTricksCache[sectionIndex];
 }
 
-int f(int sectionIndex, int trickCombinationIndex, vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<int> &resultArray) {
+int f(int sectionIndex, int trickCombinationIndex, vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<int> &resultArray, vector<vector<int>> &fCache) {
     if (sectionIndex >= sections.size()) return 0;
 
-    int max = MINUS_INFINITE, maxTrickCombinationIndex = -1;
+    if (fCache[sectionIndex][trickCombinationIndex + 1] != MINUS_INFINITE) return fCache[sectionIndex][trickCombinationIndex + 1];
+
+    int max = f(sectionIndex + 1, -1, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray, fCache);
+    int maxTrickCombinationIndex = -1;
     vector<int> possibleTrickCombinations = getPossibleTrickCombinations(sections, trickCombinations, sectionIndex, sectionPossibleTricksCache);
 
     for (int currTrickCombinationIndex : possibleTrickCombinations) {
-        int result = f(sectionIndex + 1, currTrickCombinationIndex, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray) + calcPoints(tricksReference, trickCombinations, currTrickCombinationIndex, trickCombinationIndex, pointsCache) * sections[sectionIndex].multiplier;
+        int result = f(sectionIndex + 1, currTrickCombinationIndex, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray, fCache) + calcPoints(tricksReference, trickCombinations, currTrickCombinationIndex, trickCombinationIndex, pointsCache) * sections[sectionIndex].multiplier;
 
         if (result > max) {
             max = result;
             maxTrickCombinationIndex = currTrickCombinationIndex;
         }
-    }
-
-    int result = f(sectionIndex + 1, -1, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray);
-
-    if (result > max) {
-        max = result;
-        maxTrickCombinationIndex = -1;
     }
 
     resultArray[sectionIndex] = maxTrickCombinationIndex;
+    fCache[sectionIndex][trickCombinationIndex + 1] = max;
     return max;
 }
 
-int callF(vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<int> &resultArray) {
-    int max = MINUS_INFINITE, maxTrickCombinationIndex = -1;
-    vector<int> possibleTrickCombinations = getPossibleTrickCombinations(sections, trickCombinations, 0, sectionPossibleTricksCache);
-
-    for (int currTrickCombinationIndex : possibleTrickCombinations) {
-        int result = f(1, currTrickCombinationIndex, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray) + calcPoints(tricksReference, trickCombinations, currTrickCombinationIndex, -1, pointsCache) * sections[0].multiplier;
-
-        if (result > max) {
-            max = result;
-            maxTrickCombinationIndex = currTrickCombinationIndex;
-        }
-    }
-
-    int result = f(1, -1, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray);
-
-    if (result > max) {
-        max = result;
-        maxTrickCombinationIndex = -1;
-    }
-
-    resultArray[0] = maxTrickCombinationIndex;
-    return max;
+int callF(vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<int> &resultArray, vector<vector<int>> &fCache) {
+    return f(0, -1, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray, fCache);
 }
 
 int main() {
@@ -200,13 +177,16 @@ int main() {
     }
 
     vector<vector<int>> sectionPossibleTricksCache(n);
+    for (int i = 0; i < n; i++) {
+        sectionPossibleTricksCache[i] = {-1};
+    }
 
     vector<TrickCombination> combinations = generateAllTrickCombinations(tricks, k);
 
     vector<vector<int>> fCache(n);
 
     for (int i = 0; i < n; i++) {
-        for (int j = 0; j < combinations.size(); j++) {
+        for (int j = 0; j <= combinations.size(); j++) {
             fCache[i].push_back(MINUS_INFINITE);
         }
     }
@@ -226,7 +206,16 @@ int main() {
 
     vector<int> resultArray(n);
 
-    int finalResult = callF(sections, tricks, combinations, pointsCache, sectionPossibleTricksCache, resultArray);
+    int finalResult = callF(sections, tricks, combinations, pointsCache, sectionPossibleTricksCache, resultArray, fCache);
+
+    if (DEBUG) {
+        cout << "fCache FINAL:" << endl;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j <= combinations.size(); j++) {
+                cout << "fCache[" << i << "][" << j << "] = " << fCache[i][j] << endl;
+            }
+        }
+    }
 
     cout << finalResult << endl;
     for (int trickCombinationIndex : resultArray) {
@@ -281,4 +270,65 @@ OUT:
 1 1
 2 1 2
 1 1
+
+IN:
+10 4
+3 84
+3 100
+5 16
+5 82
+7 4
+2 48
+9 11
+10 37
+9 73
+4 14
+4 18
+20 19
+13 12
+6 13
+
+OUT:
+3486
+4 4 3 2 1
+4 4 3 2 1
+0
+4 4 3 2 1
+0
+3 4 3 2
+0
+2 4 2
+4 4 3 2 1
+1 3
+
+IN:
+10 4
+10 67
+8 50
+10 87
+10 74
+10 59
+9 38
+4 4
+8 39
+5 20
+8 70
+1 5
+8 7
+12 11
+17 19
+
+OUT:
+7150
+4 4 3 2 1
+0
+4 4 3 2 1
+0
+4 4 3 2 1
+3 4 3 2
+0
+3 4 3 2
+0
+4 4 3 2 1
+
 */
