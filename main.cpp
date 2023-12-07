@@ -32,6 +32,18 @@ class TrickCombination {
     TrickCombination(vector<int> _tricks, int _totalTime) : tricks(_tricks), totalTime(_totalTime){};
 };
 
+class ResultElement {
+   public:
+    int maxPoints, maxTrickCombinationIndex;
+
+    ResultElement() {
+        maxPoints = MINUS_INFINITE;
+        maxTrickCombinationIndex = -1;
+    }
+
+    ResultElement(int _maxPoints, int _maxTrickCombinationIndex) : maxPoints(_maxPoints), maxTrickCombinationIndex(_maxTrickCombinationIndex){};
+};
+
 void trickCombination(int aux[], int start, int end, int index, int size, vector<TrickCombination> &result, vector<Trick> &tricksReference);
 
 vector<TrickCombination> generateAllTrickCombinations(vector<Trick> &tricks, int size) {
@@ -109,7 +121,7 @@ vector<int> getPossibleTrickCombinations(vector<Section> &sections, vector<Trick
     return sectionPossibleTricksCache[sectionIndex];
 }
 
-int f(int sectionIndex, int trickCombinationIndex, vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<int> &resultArray, vector<vector<int>> &fCache) {
+int f(int sectionIndex, int trickCombinationIndex, vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<ResultElement> &resultArray, vector<vector<int>> &fCache) {
     if (sectionIndex >= sections.size()) return 0;
 
     if (fCache[sectionIndex][trickCombinationIndex + 1] != MINUS_INFINITE) return fCache[sectionIndex][trickCombinationIndex + 1];
@@ -127,12 +139,15 @@ int f(int sectionIndex, int trickCombinationIndex, vector<Section> &sections, ve
         }
     }
 
-    resultArray[sectionIndex] = maxTrickCombinationIndex;
+    if (max > resultArray[sectionIndex].maxPoints) {
+        resultArray[sectionIndex].maxPoints = max;
+        resultArray[sectionIndex].maxTrickCombinationIndex = maxTrickCombinationIndex;
+    }
     fCache[sectionIndex][trickCombinationIndex + 1] = max;
     return max;
 }
 
-int callF(vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<int> &resultArray, vector<vector<int>> &fCache) {
+int callF(vector<Section> &sections, vector<Trick> &tricksReference, vector<TrickCombination> &trickCombinations, vector<vector<int>> &pointsCache, vector<vector<int>> &sectionPossibleTricksCache, vector<ResultElement> &resultArray, vector<vector<int>> &fCache) {
     return f(0, -1, sections, tricksReference, trickCombinations, pointsCache, sectionPossibleTricksCache, resultArray, fCache);
 }
 
@@ -204,7 +219,7 @@ int main() {
         cout << "test points:" << calcPoints(tricks, combinations, 2, 1, pointsCache) << endl;
     }
 
-    vector<int> resultArray(n);
+    vector<ResultElement> resultArray(n);
 
     int finalResult = callF(sections, tricks, combinations, pointsCache, sectionPossibleTricksCache, resultArray, fCache);
 
@@ -218,7 +233,8 @@ int main() {
     }
 
     cout << finalResult << endl;
-    for (int trickCombinationIndex : resultArray) {
+    for (ResultElement el : resultArray) {
+        int trickCombinationIndex = el.maxTrickCombinationIndex;
         if (trickCombinationIndex == -1) {
             cout << 0 << endl;
             continue;
